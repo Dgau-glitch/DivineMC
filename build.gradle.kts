@@ -37,6 +37,32 @@ paperweight {
     }
 }
 
+
+val repairPaperweightUpstreamState by tasks.registering {
+    doLast {
+        val upstreamRepo = layout.projectDirectory.dir(".gradle/caches/paperweight/upstreams/purpur").asFile
+        val gitDir = upstreamRepo.resolve(".git")
+
+        if (!gitDir.exists()) {
+            return@doLast
+        }
+
+        val hasBaseBranch = providers.exec {
+            commandLine("git", "--git-dir=${gitDir.absolutePath}", "rev-parse", "--verify", "base")
+            isIgnoreExitValue = true
+        }.result.get().exitValue == 0
+
+        if (!hasBaseBranch) {
+            logger.lifecycle("Repairing corrupted paperweight upstream checkout at ${upstreamRepo.absolutePath} (missing 'base' branch)")
+            upstreamRepo.deleteRecursively()
+        }
+    }
+}
+
+tasks.matching { it.name in setOf("applyUpstream", "applyAllPatches") }.configureEach {
+    dependsOn(repairPaperweightUpstreamState)
+}
+
 allprojects {
     apply(plugin = "java")
     apply(plugin = "maven-publish")
