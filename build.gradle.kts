@@ -43,7 +43,7 @@ val repairPaperweightUpstreamState by tasks.registering {
         val upstreamRepo = layout.projectDirectory.dir(".gradle/caches/paperweight/upstreams/purpur").asFile
         val gitDir = upstreamRepo.resolve(".git")
 
-        if (!gitDir.exists()) {
+        if (!upstreamRepo.exists() || !gitDir.exists()) {
             return@doLast
         }
 
@@ -53,13 +53,24 @@ val repairPaperweightUpstreamState by tasks.registering {
         }.result.get().exitValue == 0
 
         if (!hasBaseBranch) {
-            logger.lifecycle("Repairing corrupted paperweight upstream checkout at ${upstreamRepo.absolutePath} (missing 'base' branch)")
-            upstreamRepo.deleteRecursively()
+            logger.lifecycle("Repairing paperweight upstream checkout at ${upstreamRepo.absolutePath} (creating missing 'base' branch)")
+
+            val hasHead = providers.exec {
+                commandLine("git", "--git-dir=${gitDir.absolutePath}", "rev-parse", "--verify", "HEAD")
+                isIgnoreExitValue = true
+            }.result.get().exitValue == 0
+
+            if (hasHead) {
+                providers.exec {
+                    commandLine("git", "--git-dir=${gitDir.absolutePath}", "branch", "-f", "base", "HEAD")
+                    isIgnoreExitValue = true
+                }.result.get()
+            }
         }
     }
 }
 
-tasks.matching { it.name in setOf("applyUpstream", "applyAllPatches") }.configureEach {
+tasks.matching { it.name == "checkoutPurpurRepo" }.configureEach {
     dependsOn(repairPaperweightUpstreamState)
 }
 
