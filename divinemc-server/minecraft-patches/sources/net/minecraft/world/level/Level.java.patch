@@ -9,14 +9,19 @@
      protected final CollectingNeighborUpdater neighborUpdater;
      private final List<TickingBlockEntity> pendingBlockEntityTickers = Lists.newArrayList();
      private boolean tickingBlockEntities;
-@@ -1447,13 +_,11 @@
+@@ -1447,13 +_,16 @@
          boolean runsNormally = this.tickRateManager().runsNormally();
++        final java.util.Set<TickingBlockEntity> alreadyTickedBlockEntities = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()); // DivineMC - Regionized Chunk Ticking - prevent duplicate block entity processing in same tick
  
          int tickedEntities = 0; // Paper - rewrite chunk system
 -        var toRemove = new it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet<TickingBlockEntity>(); // Paper - Fix MC-117075; use removeAll
 -        toRemove.add(null); // Paper - Fix MC-117075
          for (this.tileTickPosition = 0; this.tileTickPosition < this.blockEntityTickers.size(); this.tileTickPosition++) { // Paper - Disable tick limiters
              TickingBlockEntity tickingBlockEntity = this.blockEntityTickers.get(this.tileTickPosition);
++            if (!alreadyTickedBlockEntities.add(tickingBlockEntity)) {
++                this.blockEntityTickers.markAsRemoved(this.tileTickPosition);
++                continue;
++            }
              // Spigot end
              if (tickingBlockEntity.isRemoved()) {
 -                toRemove.add(tickingBlockEntity); // Paper - Fix MC-117075; use removeAll
