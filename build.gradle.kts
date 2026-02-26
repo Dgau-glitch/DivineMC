@@ -37,6 +37,52 @@ paperweight {
     }
 }
 
+
+val repairPaperweightUpstreamState by tasks.registering {
+    doLast {
+        val upstreamsRoot = layout.projectDirectory.dir(".gradle/caches/paperweight/upstreams").asFile
+        if (!upstreamsRoot.exists()) return@doLast
+
+        upstreamsRoot.walkTopDown()
+            .filter { it.isDirectory && it.name == ".git" }
+            .forEach { gitDir ->
+                val hasBaseBranch = providers.exec {
+                    commandLine("git", "--git-dir=${gitDir.absolutePath}", "rev-parse", "--verify", "base")
+                    isIgnoreExitValue = true
+                }.result.get().exitValue == 0
+
+                if (hasBaseBranch) {
+                    return@forEach
+                }
+
+                val hasHead = providers.exec {
+                    commandLine("git", "--git-dir=${gitDir.absolutePath}", "rev-parse", "--verify", "HEAD")
+                    isIgnoreExitValue = true
+                }.result.get().exitValue == 0
+
+                if (hasHead) {
+                    logger.lifecycle("Repairing paperweight upstream checkout at ${gitDir.parentFile.absolutePath} (creating missing 'base' branch)")
+                    providers.exec {
+                        commandLine("git", "--git-dir=${gitDir.absolutePath}", "update-ref", "refs/heads/base", "HEAD")
+                        isIgnoreExitValue = true
+                    }.result.get()
+                }
+            }
+    }
+}
+
+gradle.allprojects {
+    tasks.matching {
+        it.name == "checkoutPurpurRepo" ||
+            it.name == "applyUpstream" ||
+            it.name == "applyAllPatches" ||
+            (it.name.startsWith("applyPurpur") && it.name.endsWith("FilePatches"))
+    }.configureEach {
+        dependsOn(rootProject.tasks.named("repairPaperweightUpstreamState"))
+    }
+}
+
+
 allprojects {
     apply(plugin = "java")
     apply(plugin = "maven-publish")
