@@ -14,11 +14,11 @@ import org.bxteam.divinemc.util.NamedAgnosticThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -31,7 +31,7 @@ public final class AsyncPath extends Path {
 
     private volatile boolean ready = false;
 
-    private final ArrayList<Consumer<Path>> postProcessingCallbacks = new ArrayList<>(0);
+    private final CopyOnWriteArrayList<Consumer<Path>> postProcessingCallbacks = new CopyOnWriteArrayList<>();
     private final Set<BlockPos> targetPositions;
     private @Nullable Supplier<Path> pathSupplier;
     private volatile @Nullable Path computedPath;
@@ -125,12 +125,13 @@ public final class AsyncPath extends Path {
     public void applyAfterProcessing(@NotNull Consumer<Path> callback) {
         if (this.ready) {
             callback.accept(this);
-        } else {
-            this.postProcessingCallbacks.add(callback);
-            if (this.ready && !this.postProcessingCallbacks.isEmpty()) {
-                callback.accept(this);
-                this.postProcessingCallbacks.remove(callback);
-            }
+            return;
+        }
+
+        this.postProcessingCallbacks.add(callback);
+
+        if (this.ready && this.postProcessingCallbacks.remove(callback)) {
+            callback.accept(this);
         }
     }
 
