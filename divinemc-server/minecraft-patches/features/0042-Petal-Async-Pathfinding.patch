@@ -28,7 +28,7 @@ index 3e0fd09a0c0047cfe100e878186471090f8909a0..8ef45758a5eb950372cf9102632f3f6d
 -                                    map.clear();
 -                                    level.debugSynchronizers().updatePoi(target);
 +                            // DivineMC start - Async Pathfinding
-+                            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++                            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +                                Path possiblePath = findPathToPois(mob, set);
 +
 +                                org.bxteam.divinemc.async.pathfinding.AsyncPath.applyAfterProcessing(possiblePath, path -> {
@@ -97,10 +97,10 @@ index a0df7e116872858efa02c9c80e9812dcd97ffbf2..c4bbf41b82898b9c725a2475421b8ea5
              WalkTarget walkTarget = brain.getMemory(MemoryModuleType.WALK_TARGET).get();
              boolean flag = this.reachedTarget(owner, walkTarget);
 -            if (!flag && this.tryComputePath(owner, walkTarget, level.getGameTime())) {
-+            if (!org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding && !flag && this.tryComputePath(owner, walkTarget, level.getGameTime())) { // DivineMC - Async Pathfinding
++            if (!org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(owner.getType()) && !flag && this.tryComputePath(owner, walkTarget, level.getGameTime())) { // DivineMC - Async Pathfinding
                  this.lastTargetPos = walkTarget.getTarget().currentBlockPosition();
                  return true;
-+            } else if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding && !flag) { // DivineMC - Async Pathfinding
++            } else if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(owner.getType()) && !flag) { // DivineMC - Async Pathfinding
 +                return true;
              } else {
                  brain.eraseMemory(MemoryModuleType.WALK_TARGET);
@@ -109,7 +109,7 @@ index a0df7e116872858efa02c9c80e9812dcd97ffbf2..c4bbf41b82898b9c725a2475421b8ea5
  
      @Override
      protected boolean canStillUse(ServerLevel level, Mob entity, long gameTime) {
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding && !this.finishedProcessing) return true; // DivineMC - wait for processing
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(entity.getType()) && !this.finishedProcessing) return true; // DivineMC - wait for processing
          if (this.path != null && this.lastTargetPos != null) {
              Optional<WalkTarget> memory = entity.getBrain().getMemory(MemoryModuleType.WALK_TARGET);
              boolean flag = memory.map(MoveToTargetSink::isWalkTargetSpectator).orElse(false);
@@ -118,7 +118,7 @@ index a0df7e116872858efa02c9c80e9812dcd97ffbf2..c4bbf41b82898b9c725a2475421b8ea5
      @Override
      protected void start(ServerLevel level, Mob entity, long gameTime) {
 +        // DivineMC start - start processing
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(entity.getType())) {
 +            Brain<?> brain = entity.getBrain();
 +            WalkTarget walkTarget = brain.getMemory(MemoryModuleType.WALK_TARGET).get();
 +
@@ -141,7 +141,7 @@ index a0df7e116872858efa02c9c80e9812dcd97ffbf2..c4bbf41b82898b9c725a2475421b8ea5
 -            brain.setMemory(MemoryModuleType.PATH, path);
 -        }
 +        // DivineMC start - Async Pathfinding
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(owner.getType())) {
 +            if (this.path != null && !this.path.isProcessed()) return;
  
 -        if (path != null && this.lastTargetPos != null) {
@@ -241,7 +241,7 @@ index 7b6e9047f88370ca445ca2a62b57df98e1d6fbc6..3c13e9eafb7fef9a1e0d05faff89a209
 -                                } else if (mutableInt.intValue() < 5) {
 -                                    map.long2LongEntrySet().removeIf(entry -> entry.getLongValue() < mutableLong.longValue());
 +                                // DivineMC start - Async Pathfinding
-+                                if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++                                if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +                                    Path possiblePath = AcquirePoi.findPathToPois(mob, set);
 +
 +                                    org.bxteam.divinemc.async.pathfinding.AsyncPath.applyAfterProcessing(possiblePath, path -> {
@@ -318,7 +318,7 @@ index 59236a4f5fcb9212b7ef66ce87bd8efcdea5383e..523e66a858f4368cf76e884da7478c38
      protected PathFinder createPathFinder(int maxVisitedNodes) {
          this.nodeEvaluator = new AmphibiousNodeEvaluator(false);
 +        // DivineMC start - Async Pathfinding
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +            return new PathFinder(this.nodeEvaluator, maxVisitedNodes, nodeEvaluatorGenerator);
 +        }
 +        // DivineMC end - Async Pathfinding
@@ -348,7 +348,7 @@ index c20d10250e2fdd563d0fcfac47de1e276393b529..bd7b6841263769c4b51ac2d27a8b37bc
      protected PathFinder createPathFinder(int maxVisitedNodes) {
          this.nodeEvaluator = new FlyNodeEvaluator();
 +        // DivineMC start - Async Pathfinding
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +            return new PathFinder(this.nodeEvaluator, maxVisitedNodes, nodeEvaluatorGenerator);
 +        }
 +        // DivineMC end - Async Pathfinding
@@ -386,7 +386,7 @@ index 5ccc526adb65b2107afd944a52c1246738b4bcad..2ce65b98befbc3fb177c7a8b3fbb81ec
      protected PathFinder createPathFinder(int maxVisitedNodes) {
          this.nodeEvaluator = new WalkNodeEvaluator();
 +        // DivineMC start - Async Pathfinding
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +            return new PathFinder(this.nodeEvaluator, maxVisitedNodes, nodeEvaluatorGenerator);
 +        }
 +        // DivineMC end - Async Pathfinding
@@ -418,7 +418,7 @@ index 56b900e796574beeefa844192a7c4c1c93393542..ff48bcfe7d58ee4723afa8f0cc059135
 -                this.reachRange = reachRange;
 -                this.resetStuckTimeout();
 +            // DivineMC start - Async Pathfinding
-+            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +                // assign early a target position. most calls will only have 1 position
 +                if (!targets.isEmpty()) this.targetPos = targets.iterator().next();
 +
@@ -505,7 +505,7 @@ index a0b7caf807602ee1f62bf05764cc16478f981da7..fd7f7b34f6d0118b97eaedb79f06d308
          this.nodeEvaluator = new SwimNodeEvaluator(this.allowBreaching);
          this.nodeEvaluator.setCanPassDoors(false);
 +        // DivineMC start - Async Pathfinding
-+        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++        if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +            return new PathFinder(this.nodeEvaluator, maxVisitedNodes, nodeEvaluatorGenerator);
 +        }
 +        // DivineMC end - Async Pathfinding
@@ -531,7 +531,7 @@ index 1f96fd5085bacb4c584576c7cb9f51e7898e9b03..4a19fe15e05676b4018fb368a770b269
 -            } else if (this.triedCount < 5) {
 -                this.batchCache.long2LongEntrySet().removeIf(entry -> entry.getLongValue() < this.lastUpdate);
 +            // DivineMC start - Async Pathfinding
-+            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(entity.getType())) {
 +                Path possiblePath = AcquirePoi.findPathToPois(entity, new java.util.HashSet<>(poiposes));
 +                org.bxteam.divinemc.async.pathfinding.AsyncPath.applyAfterProcessing(possiblePath, path -> {
 +                    processPath(entity, poiManager, path);
@@ -608,7 +608,7 @@ index f87a7fbcca28b28369f5425e7ff5876aae0f3514..e23548057ec89dec3dba590766c993d6
          protected PathFinder createPathFinder(int maxVisitedNodes) {
              this.nodeEvaluator = new Frog.FrogNodeEvaluator(true);
 +            // DivineMC start - Async Pathfinding
-+            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +                return new PathFinder(this.nodeEvaluator, maxVisitedNodes, nodeEvaluatorGenerator);
 +            }
 +            // DivineMC end - Async Pathfinding
@@ -624,7 +624,7 @@ index c39004a546c28c9f8af26e727c67dbff85ba1212..c19a6fe1c4162b5931c1951480bdc408
          @Override
          public void vanillaTick() { // Purpur - Ridables
 +            // DivineMC start - Async Pathfinding
-+            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(this.rabbit.getType())) {
 +                Path path = this.rabbit.getNavigation().getPath();
 +                if (path != null && !path.isProcessed()) {
 +                    return;
@@ -657,7 +657,7 @@ index 37b0c8f55ed4ac4feac6a35bd4377007a19ea2ce..9da244912e397859b552336682ca29a2
          protected PathFinder createPathFinder(int maxVisitedNodes) {
              this.nodeEvaluator = new WalkNodeEvaluator();
 +            // DivineMC start - Async Pathfinding
-+            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++            if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +                return new PathFinder(this.nodeEvaluator, maxVisitedNodes, nodeEvaluatorGenerator);
 +            }
 +            // DivineMC end
@@ -673,7 +673,7 @@ index 42535a9dd42e705c9d33d21038bbdbbf27272319..11f74d4d0b5e116898f8a6a3f65d90d6
              protected PathFinder createPathFinder(int maxVisitedNodes) {
                  this.nodeEvaluator = new WalkNodeEvaluator();
 +                // DivineMC start - Async Pathfinding
-+                if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.asyncPathfinding) {
++                if (org.bxteam.divinemc.config.DivineConfig.AsyncCategory.canUseAsyncPathfindingFor(mob.getType())) {
 +                    return new PathFinder(this.nodeEvaluator, maxVisitedNodes, GroundPathNavigation.nodeEvaluatorGenerator) {
 +                        @Override
 +                        protected float distance(Node first, Node second) {

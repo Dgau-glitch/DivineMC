@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -31,7 +32,7 @@ public final class AsyncPath extends Path {
 
     private volatile boolean ready = false;
 
-    private final ArrayList<Consumer<Path>> postProcessingCallbacks = new ArrayList<>(0);
+    private final List<Consumer<Path>> postProcessingCallbacks = Collections.synchronizedList(new ArrayList<>(0));
     private final Set<BlockPos> targetPositions;
     private @Nullable Supplier<Path> pathSupplier;
     private volatile @Nullable Path computedPath;
@@ -53,16 +54,14 @@ public final class AsyncPath extends Path {
     }
 
     private void queueProcessing() {
+        final Supplier<Path> supplier = Objects.requireNonNull(this.pathSupplier, "pathSupplier");
         if (EXECUTOR == null) {
-            this.computedPath = pathSupplier.get();
+            complete(supplier.get());
             return;
         }
 
-        CompletableFuture.runAsync(() -> {
-                if (this.computedPath == null) {
-                    this.computedPath = Objects.requireNonNull(pathSupplier).get();
-                }
-            }, EXECUTOR)
+        CompletableFuture
+            .supplyAsync(supplier, EXECUTOR)
             .orTimeout(60L, TimeUnit.SECONDS)
             .exceptionally(throwable -> {
                 if (throwable instanceof TimeoutException) {
@@ -70,11 +69,18 @@ public final class AsyncPath extends Path {
                 } else {
                     LOGGER.warn("Error during async pathfinding", throwable);
                 }
-                return null;
-            });
+                final BlockPos fallbackTarget = this.targetPositions.isEmpty() ? BlockPos.ZERO : this.targetPositions.iterator().next();
+                return new Path(List.of(), fallbackTarget, false);
+            })
+            .thenAccept(path -> MinecraftServer.getServer().scheduleOnMain(() -> {
+                this.computedPath = path;
+                if (!this.ready) {
+                    complete(path);
+                }
+            }));
     }
 
-    private void complete(@NotNull Path completedPath) {
+    private synchronized void complete(@NotNull Path completedPath) {
         this.nodes = completedPath.nodes;
         this.target = completedPath.getTarget();
         this.distToTarget = completedPath.getDistToTarget();
@@ -123,14 +129,15 @@ public final class AsyncPath extends Path {
     }
 
     public void applyAfterProcessing(@NotNull Consumer<Path> callback) {
-        if (this.ready) {
-            callback.accept(this);
-        } else {
-            this.postProcessingCallbacks.add(callback);
-            if (this.ready && !this.postProcessingCallbacks.isEmpty()) {
-                callback.accept(this);
-                this.postProcessingCallbacks.remove(callback);
+        final boolean callNow;
+        synchronized (this) {
+            callNow = this.ready;
+            if (!callNow) {
+                this.postProcessingCallbacks.add(callback);
             }
+        }
+        if (callNow) {
+            callback.accept(this);
         }
     }
 
