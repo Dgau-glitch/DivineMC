@@ -67,27 +67,18 @@ public final class RegionizedChunkTicking extends ServerChunkCache {
             ticked.add(tick(region, randomTickSpeed));
         }
 
-        CompletableFuture.runAsync(() -> {
-            finishTicking(ticked, randomTickSpeed, raw, tickPair);
-            spawns.join();
-        }, REGION_EXECUTOR).join();
+        finishTicking(ticked, randomTickSpeed, raw, tickPair);
+        spawns.join();
     }
 
     private CompletableFuture<LongOpenHashSet> tick(RegionData region, int randomTickSpeed) {
         return CompletableFuture.supplyAsync(() -> {
-            LongOpenHashSet regionChunksIDs = new LongOpenHashSet(region.chunks().size());
+            final LongOpenHashSet regionChunksIDs = new LongOpenHashSet(region.chunks().size());
             for (long key : region.chunks()) {
-                LevelChunk chunk = fullChunks.get(key);
-                if (chunk != null) {
-                    level.tickChunk(chunk, randomTickSpeed);
+                if (fullChunks.get(key) != null) {
                     regionChunksIDs.add(key);
                 }
             }
-
-            for (Entity entity : region.entities()) {
-                tickEntity(entity);
-            }
-
             return regionChunksIDs;
         }, REGION_EXECUTOR);
     }
@@ -106,6 +97,12 @@ public final class RegionizedChunkTicking extends ServerChunkCache {
                 try {
                     LongOpenHashSet regionChunks = future.join();
                     tickedChunkKeys.addAll(regionChunks);
+                    for (long key : regionChunks) {
+                        final LevelChunk chunk = fullChunks.get(key);
+                        if (chunk != null) {
+                            level.tickChunk(chunk, randomTickSpeed);
+                        }
+                    }
                 } catch (Exception e) {
                     LOGGER.error("Exception in region ticking future", e);
                 }
@@ -115,6 +112,15 @@ public final class RegionizedChunkTicking extends ServerChunkCache {
         for (LevelChunk chunk : raw) {
             if (!tickedChunkKeys.contains(chunk.coordinateKey)) {
                 level.tickChunk(chunk, randomTickSpeed);
+            }
+        }
+
+        for (RegionData region : tickPair.regions()) {
+            if (region == null || region.isEmpty()) {
+                continue;
+            }
+            for (Entity entity : region.entities()) {
+                tickEntity(entity);
             }
         }
 

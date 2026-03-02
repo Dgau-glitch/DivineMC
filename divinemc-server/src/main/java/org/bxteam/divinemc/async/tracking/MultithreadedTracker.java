@@ -17,18 +17,22 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MultithreadedTracker {
     private static final String THREAD_PREFIX = "Async Tracker";
     private static final Logger LOGGER = LogManager.getLogger(THREAD_PREFIX);
 
     private static long lastWarnMillis = System.currentTimeMillis();
+    private static final Map<ServerLevel, AtomicBoolean> TRACKING_TASKS_IN_FLIGHT = java.util.Collections.synchronizedMap(new WeakHashMap<>());
     public static final ThreadPoolExecutor TRACKER_EXECUTOR = DivineConfig.AsyncCategory.multithreadedEnabled ? new ThreadPoolExecutor(
         getCorePoolSize(),
         getMaxPoolSize(),
@@ -56,9 +60,11 @@ public class MultithreadedTracker {
 
         final ReferenceList<Entity> trackerEntities = entityLookup.trackerEntities;
         final Entity[] trackerEntitiesRaw = trackerEntities.getRawDataUnchecked();
+        final int trackerEntitiesLength = Math.min(trackerEntitiesRaw.length, trackerEntities.size());
 
-        TRACKER_EXECUTOR.execute(() -> {
-            for (final Entity entity : trackerEntitiesRaw) {
+        submitTrackingTask(level, () -> {
+            for (int i = 0; i < trackerEntitiesLength; i++) {
+                final Entity entity = trackerEntitiesRaw[i];
                 if (entity == null) continue;
 
                 final ChunkMap.TrackedEntity tracker = ((EntityTrackerEntity) entity).moonrise$getTrackedEntity();
@@ -80,11 +86,13 @@ public class MultithreadedTracker {
 
         final ReferenceList<Entity> trackerEntities = entityLookup.trackerEntities;
         final Entity[] trackerEntitiesRaw = trackerEntities.getRawDataUnchecked();
-        final Runnable[] sendChangesTasks = new Runnable[trackerEntitiesRaw.length];
-        final Runnable[] tickTask = new Runnable[trackerEntitiesRaw.length];
+        final int trackerEntitiesLength = Math.min(trackerEntitiesRaw.length, trackerEntities.size());
+        final Runnable[] sendChangesTasks = new Runnable[trackerEntitiesLength];
+        final Runnable[] tickTask = new Runnable[trackerEntitiesLength];
         int index = 0;
 
-        for (final Entity entity : trackerEntitiesRaw) {
+        for (int i = 0; i < trackerEntitiesLength; i++) {
+            final Entity entity = trackerEntitiesRaw[i];
             if (entity == null) continue;
 
             final ChunkMap.TrackedEntity tracker = ((EntityTrackerEntity) entity).moonrise$getTrackedEntity();
@@ -98,7 +106,7 @@ public class MultithreadedTracker {
             index++;
         }
 
-        TRACKER_EXECUTOR.execute(() -> {
+        submitTrackingTask(level, () -> {
             for (final Runnable tick : tickTask) {
                 if (tick == null) continue;
 
@@ -110,6 +118,27 @@ public class MultithreadedTracker {
                 sendChanges.run();
             }
         });
+    }
+
+
+    private static void submitTrackingTask(ServerLevel level, Runnable task) {
+        final AtomicBoolean inFlightFlag = TRACKING_TASKS_IN_FLIGHT.computeIfAbsent(level, key -> new AtomicBoolean(false));
+        if (!inFlightFlag.compareAndSet(false, true)) {
+            return;
+        }
+
+        try {
+            TRACKER_EXECUTOR.execute(() -> {
+                try {
+                    task.run();
+                } finally {
+                    inFlightFlag.set(false);
+                }
+            });
+        } catch (RuntimeException e) {
+            inFlightFlag.set(false);
+            throw e;
+        }
     }
 
     // Original ChunkMap#newTrackerTick of Paper
