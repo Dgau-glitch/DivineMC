@@ -14,6 +14,7 @@ import org.bxteam.divinemc.util.NamedAgnosticThreadFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -70,8 +71,23 @@ public final class AsyncPath extends Path {
                 } else {
                     LOGGER.warn("Error during async pathfinding", throwable);
                 }
+                failProcessing();
                 return null;
             });
+    }
+
+
+    private void failProcessing() {
+        if (this.computedPath != null) {
+            return;
+        }
+
+        synchronized (this) {
+            if (this.computedPath == null) {
+                final BlockPos fallbackTarget = this.targetPositions.isEmpty() ? BlockPos.ZERO : this.targetPositions.iterator().next();
+                this.computedPath = new Path(Collections.emptyList(), fallbackTarget, false);
+            }
+        }
     }
 
     private void complete(@NotNull Path completedPath) {
