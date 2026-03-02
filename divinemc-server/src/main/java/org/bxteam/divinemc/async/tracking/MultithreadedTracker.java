@@ -56,9 +56,11 @@ public class MultithreadedTracker {
 
         final ReferenceList<Entity> trackerEntities = entityLookup.trackerEntities;
         final Entity[] trackerEntitiesRaw = trackerEntities.getRawDataUnchecked();
+        final int trackerEntitiesLength = Math.min(trackerEntitiesRaw.length, trackerEntities.size());
 
         TRACKER_EXECUTOR.execute(() -> {
-            for (final Entity entity : trackerEntitiesRaw) {
+            for (int i = 0; i < trackerEntitiesLength; i++) {
+                final Entity entity = trackerEntitiesRaw[i];
                 if (entity == null) continue;
 
                 final ChunkMap.TrackedEntity tracker = ((EntityTrackerEntity) entity).moonrise$getTrackedEntity();
@@ -80,11 +82,13 @@ public class MultithreadedTracker {
 
         final ReferenceList<Entity> trackerEntities = entityLookup.trackerEntities;
         final Entity[] trackerEntitiesRaw = trackerEntities.getRawDataUnchecked();
-        final Runnable[] sendChangesTasks = new Runnable[trackerEntitiesRaw.length];
-        final Runnable[] tickTask = new Runnable[trackerEntitiesRaw.length];
+        final int trackerEntitiesLength = Math.min(trackerEntitiesRaw.length, trackerEntities.size());
+        final Runnable[] sendChangesTasks = new Runnable[trackerEntitiesLength];
+        final Runnable[] tickTask = new Runnable[trackerEntitiesLength];
         int index = 0;
 
-        for (final Entity entity : trackerEntitiesRaw) {
+        for (int i = 0; i < trackerEntitiesLength; i++) {
+            final Entity entity = trackerEntitiesRaw[i];
             if (entity == null) continue;
 
             final ChunkMap.TrackedEntity tracker = ((EntityTrackerEntity) entity).moonrise$getTrackedEntity();
