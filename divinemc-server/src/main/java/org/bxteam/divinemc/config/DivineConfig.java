@@ -26,9 +26,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 
 @SuppressWarnings({"SameParameterValue", "DataFlowIssue"})
 public class DivineConfig {
@@ -209,6 +211,11 @@ public class DivineConfig {
         public static int asyncPathfindingKeepalive = 60;
         public static int asyncPathfindingQueueSize = 0;
         public static PathfindTaskRejectPolicy asyncPathfindingRejectPolicy = PathfindTaskRejectPolicy.CALLER_RUNS;
+        public static List<String> asyncPathfindingMobBlacklist = new ArrayList<>(Arrays.asList(
+            "minecraft:villager",
+            "minecraft:copper_golem"
+        ));
+        public static Set<EntityType<?>> asyncPathfindingMobBlacklistSet = Set.of();
 
         // Multithreaded tracker settings
         public static boolean multithreadedEnabled = true;
@@ -271,6 +278,9 @@ public class DivineConfig {
             asyncPathfindingMaxThreads = getInt(ConfigCategory.ASYNC.key("pathfinding.max-threads"), asyncPathfindingMaxThreads);
             asyncPathfindingKeepalive = getInt(ConfigCategory.ASYNC.key("pathfinding.keepalive"), asyncPathfindingKeepalive);
             asyncPathfindingQueueSize = getInt(ConfigCategory.ASYNC.key("pathfinding.queue-size"), asyncPathfindingQueueSize);
+            asyncPathfindingMobBlacklist = getStringList(ConfigCategory.ASYNC.key("pathfinding.mob-blacklist"), asyncPathfindingMobBlacklist,
+                "List of mobs that should always use synchronous pathfinding.",
+                "Use namespaced entity IDs, for example: minecraft:villager");
 
             final int maxThreads = Runtime.getRuntime().availableProcessors();
             if (asyncPathfindingMaxThreads < 0) {
@@ -299,6 +309,22 @@ public class DivineConfig {
                 LOGGER.warn("Invalid async pathfinding reject policy, using default CALLER_RUNS");
                 asyncPathfindingRejectPolicy = PathfindTaskRejectPolicy.CALLER_RUNS;
             }
+
+            final Set<EntityType<?>> blacklist = new HashSet<>();
+            for (final String rawType : asyncPathfindingMobBlacklist) {
+                try {
+                    final Identifier key = Identifier.parse(rawType.trim().toLowerCase(Locale.ROOT));
+                    BuiltInRegistries.ENTITY_TYPE.getOptional(key).ifPresentOrElse(blacklist::add,
+                        () -> LOGGER.warn("Unknown entity type '{}' in async pathfinding mob-blacklist", rawType));
+                } catch (IllegalArgumentException ex) {
+                    LOGGER.warn("Invalid entity type '{}' in async pathfinding mob-blacklist", rawType);
+                }
+            }
+            asyncPathfindingMobBlacklistSet = Set.copyOf(blacklist);
+        }
+
+        public static boolean canUseAsyncPathfindingFor(final EntityType<?> entityType) {
+            return asyncPathfinding && !asyncPathfindingMobBlacklistSet.contains(entityType);
         }
 
         private static void multithreadedTracker() {
