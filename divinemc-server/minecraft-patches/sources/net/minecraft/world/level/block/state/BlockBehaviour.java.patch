@@ -1,0 +1,27 @@
+--- a/net/minecraft/world/level/block/state/BlockBehaviour.java
++++ b/net/minecraft/world/level/block/state/BlockBehaviour.java
+@@ -349,13 +_,23 @@ public abstract class BlockBehaviour implements FeatureElement {
+     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+     }
++
++    // DivineMC start - Lag compensation
++    private float lagCompensation(float original, Player player) {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.blockBreakingAcceleration) return original;
++        if (player.level().isClientSide) return original;
++        float tps = (float) ((ServerLevel) player.level()).tpsCalculator.getMostAccurateTPS();
++        float safeTps = Math.max(org.bxteam.divinemc.util.tps.TPSCalculator.MAX_TPS / 2.0F, tps);
++        return original * org.bxteam.divinemc.util.tps.TPSCalculator.MAX_TPS / safeTps;
++    }
++    // DivineMC end - Lag compensation
+ 
+     protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+         float destroySpeed = state.getDestroySpeed(level, pos);
+         if (destroySpeed == -1.0F) {
+-            return 0.0F;
++            return lagCompensation(0.0F, player); // DivineMC - Lag compensation
+         } else {
+             int i = player.hasCorrectToolForDrops(state) ? 30 : 100;
+-            return player.getDestroySpeed(state) / destroySpeed / i;
++            return lagCompensation(player.getDestroySpeed(state) / destroySpeed / i, player); // DivineMC - Lag compensation
+         }
+     }

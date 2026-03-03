@@ -22,5 +22,36 @@
 +        return section.states.get((y & 15) << 8 | (z & 15) << 4 | (x & 15));
 +        // DivineMC end - Optimize block state lookup
      }
- 
+
      @Override
+--- a/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -953,6 +_,17 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+             this.ticker = ticker;
+         }
++
++        // DivineMC start - Lag compensation
++        private <T extends BlockEntity> void lagCompensation(Runnable original) {
++            original.run();
++            if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled) return;
++            if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.blockEntityAcceleration) return;
++            if (LevelChunk.this.level.isClientSide()) return;
++            // Intentionally do not execute additional block entity ticks in the same tick to avoid dupes/state corruption.
++        }
++        // DivineMC end - Lag compensation
+
+         @Override
+         public void tick() {
+@@ -963,7 +_,11 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
+                         profilerFiller.push(this::getType);
+                         BlockState blockState = LevelChunk.this.getBlockState(blockPos);
+                         if (this.blockEntity.getType().isValid(blockState)) {
+-                            this.ticker.tick(LevelChunk.this.level, this.blockEntity.getBlockPos(), blockState, this.blockEntity);
++                            // DivineMC start - Lag compensation
++                            lagCompensation(() -> {
++                                this.ticker.tick(LevelChunk.this.level, this.blockEntity.getBlockPos(), blockState, this.blockEntity);
++                            });
++                            // DivineMC end - Lag compensation
+                             this.loggedInvalidBlockState = false;
+                         // Paper start - Remove the Block Entity if it's invalid
+                         } else {

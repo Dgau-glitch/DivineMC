@@ -22,3 +22,13 @@
          this.onServerExit();
          // Paper end - Improved watchdog support - move final shutdown items here
      }
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -1650,6 +_,7 @@
+         }
+
+         this.server.spark.tickStart(); // Paper - spark
++        this.tpsCalculator.doTick(); // DivineMC - Lag compensation
+         new com.destroystokyo.paper.event.server.ServerTickStartEvent(this.tickCount+1).callEvent(); // Paper - Server Tick Events
+         this.tickCount++;
+         this.tickRateManager.tick();

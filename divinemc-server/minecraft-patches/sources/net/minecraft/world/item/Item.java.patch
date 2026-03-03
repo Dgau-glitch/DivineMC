@@ -1,0 +1,29 @@
+--- a/net/minecraft/world/item/Item.java
++++ b/net/minecraft/world/item/Item.java
+@@ -299,10 +_,25 @@ public class Item implements FeatureElement, ItemLike {
+         }
+     }
+ 
++    // DivineMC start - Lag compensation
++    private int lagCompensation(int original, net.minecraft.server.level.ServerLevel level) {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.eatingAcceleration || original == 0) return original;
++        return org.bxteam.divinemc.util.tps.TPSUtil.tt20(original, true, level);
++    }
++    // DivineMC end - Lag compensation
++
+     public int getUseDuration(ItemStack stack, LivingEntity entity) {
+         Consumable consumable = stack.get(DataComponents.CONSUMABLE);
+         if (consumable != null) {
+-            return consumable.consumeTicks();
++            // DivineMC start - Lag compensation
++            int original = consumable.consumeTicks();
++
++            if (entity.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
++                return lagCompensation(original, serverLevel);
++            }
++
++            return original;
++            // DivineMC end - Lag compensation
+         } else {
+             return !stack.has(DataComponents.BLOCKS_ATTACKS) && !stack.has(DataComponents.KINETIC_WEAPON) ? 0 : 72000;
+         }

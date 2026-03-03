@@ -1,0 +1,24 @@
+--- a/net/minecraft/world/level/material/LavaFluid.java
++++ b/net/minecraft/world/level/material/LavaFluid.java
+@@ -188,9 +_,22 @@ public abstract class LavaFluid extends FlowingFluid {
+         return fluidState.getHeight(level, pos) >= 0.44444445F && fluid.is(FluidTags.WATER);
+     }
++
++    // DivineMC start - Lag compensation
++    private int lagCompensation(int original, ServerLevel level) {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.fluidAcceleration) return original;
++        return org.bxteam.divinemc.util.tps.TPSUtil.tt20(original, true, level);
++    }
++    // DivineMC end - Lag compensation
+ 
+     @Override
+     public int getTickDelay(LevelReader level) {
+-        return level.getWorldBorder().world != null ? (isFastLava(level) ? level.getWorldBorder().world.purpurConfig.lavaSpeedNether : level.getWorldBorder().world.purpurConfig.lavaSpeedNotNether) : (isFastLava(level) ? 10 : 30); // Purpur - Make lava flow speed configurable
++        // DivineMC start - Lag compensation
++        int original = level.getWorldBorder().world != null ? (isFastLava(level) ? level.getWorldBorder().world.purpurConfig.lavaSpeedNether : level.getWorldBorder().world.purpurConfig.lavaSpeedNotNether) : (isFastLava(level) ? 10 : 30); // Purpur - Make lava flow speed configurable
++        if (level instanceof ServerLevel serverLevel) {
++            return lagCompensation(original, serverLevel);
++        }
++        return original;
++        // DivineMC end - Lag compensation
+     }
