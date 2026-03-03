@@ -87,9 +87,7 @@ index 78dd48fd723de021aa9f07b513e367363d3757c1..65aada833fd65369ecfd15a21d93fe59
 +        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.potionEffectAcceleration) return;
 +        if (this.level().isClientSide()) return;
 +
-+        for (int i = 0; i < ((ServerLevel) this.level()).tpsCalculator.applicableMissedTicks(); i++) {
-+            tickEffects();
-+        }
++        // Intentionally do not run extra effect ticks in the same server tick to avoid stacked damage/healing.
 +    }
 +    // DivineMC end - Lag Compensation
 +
@@ -105,7 +103,7 @@ index 4e69e32ad000b8c02e44c3ffce24ff5e3c090a2f..54ab44c223465a8111afd98e5d135595
          } else {
              this.insidePortalThisTick = false;
 -            return canChangeDimensions && this.portalTime++ >= this.portal.getPortalTransitionTime(level, entity);
-+            return canChangeDimensions && lagCompensation(this.portalTime++, level) >= this.portal.getPortalTransitionTime(level, entity); // DivineMC - Lag compensation
++            return canChangeDimensions && lagCompensation(++this.portalTime, level) >= this.portal.getPortalTransitionTime(level, entity); // DivineMC - Lag compensation
          }
      }
  
@@ -114,8 +112,7 @@ index 4e69e32ad000b8c02e44c3ffce24ff5e3c090a2f..54ab44c223465a8111afd98e5d135595
 +        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.portalAcceleration) return original;
 +        if (world.isClientSide()) return original;
 +
-+        portalTime = portalTime + world.tpsCalculator.applicableMissedTicks();
-+        return portalTime;
++        return original + world.tpsCalculator.applicableMissedTicks();
 +    }
 +    // DivineMC end - Lag compensation
 +
@@ -195,7 +192,9 @@ index 430712393db078423d5d7e3391cc0a6833cab434..5ce545304d1ba80efaeb63367dbd34b2
 +    private float lagCompensation(float original, Player player) {
 +        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.blockBreakingAcceleration) return original;
 +        if (player.level().isClientSide) return original;
-+        return original * org.bxteam.divinemc.util.tps.TPSCalculator.MAX_TPS / (float) ((ServerLevel) player.level()).tpsCalculator.getMostAccurateTPS();
++        float tps = (float) ((ServerLevel) player.level()).tpsCalculator.getMostAccurateTPS();
++        float safeTps = Math.max(org.bxteam.divinemc.util.tps.TPSCalculator.MAX_TPS / 2.0F, tps);
++        return original * org.bxteam.divinemc.util.tps.TPSCalculator.MAX_TPS / safeTps;
 +    }
 +    // DivineMC end - Lag compensation
 +
@@ -226,9 +225,7 @@ index d2b57bf925d11c085994e4b88e7434e22b954645..1b744bb4b5c1a7722adc59aae066a352
 +            if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.blockEntityAcceleration) return;
 +            if (LevelChunk.this.level.isClientSide()) return;
 +
-+            for (int i = 0; i < ((ServerLevel) this.blockEntity.getLevel()).tpsCalculator.applicableMissedTicks(); i++) {
-+                original.run();
-+            }
++            // Intentionally do not execute additional block entity ticks in the same tick to avoid dupes/state corruption.
 +        }
 +        // DivineMC end - Lag compensation
 +
