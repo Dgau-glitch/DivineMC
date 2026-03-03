@@ -30,6 +30,10 @@ public class TPSUtil {
     }
 
     public static double rawTT20(double ticks, @Nullable ServerLevel level) {
-        return ticks == 0 ? 0 : ticks * (level == null ? MinecraftServer.getServer().tpsCalculator.getMostAccurateTPS() : level.tpsCalculator.getMostAccurateTPS()) / MAX_TPS;
+        if (ticks == 0) return 0;
+
+        double measuredTps = level == null ? MinecraftServer.getServer().tpsCalculator.getMostAccurateTPS() : level.tpsCalculator.getMostAccurateTPS();
+        double safeTps = Math.max(MAX_TPS / 2.0D, Math.min(MAX_TPS, measuredTps));
+        return ticks * safeTps / MAX_TPS;
     }
 }

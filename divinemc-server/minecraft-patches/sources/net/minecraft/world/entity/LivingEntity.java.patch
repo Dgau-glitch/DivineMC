@@ -1,17 +1,17 @@
 --- a/net/minecraft/world/entity/LivingEntity.java
 +++ b/net/minecraft/world/entity/LivingEntity.java
 @@ -754,6 +_,7 @@
- 
+
          super.remove(reason, eventCause); // CraftBukkit
          this.brain.clearMemories();
 +        this.combatTracker.resetCombatState(); // DivineMC - Fix MC-298464 (by HaHaWTH)
      }
- 
+
      @Override
 @@ -1444,7 +_,7 @@
                  player.setRealHealth(health);
              }
- 
+
 -            player.updateScaledHealth(false);
 +            this.entityData.set(LivingEntity.DATA_HEALTH_ID, player.getScaledHealth()); // DivineMC - Fix sprint glitch
              return;
@@ -19,7 +19,7 @@
          // CraftBukkit end
 @@ -2849,6 +_,7 @@
      }
- 
+
      protected void updateSwingTime() {
 +        if (!this.swinging && this.swingTime == 0) return; // DivineMC - lithium: entity.fast_hand_swing
          int currentSwingDuration = this.getCurrentSwingDuration();
@@ -27,7 +27,7 @@
              this.swingTime++;
 @@ -3395,7 +_,13 @@
      }
- 
+
      protected float getFlyingSpeed() {
 -        return this.getControllingPassenger() instanceof Player ? this.getSpeed() * 0.1F : 0.02F;
 +        // DivineMC start - Fix MC-172801
@@ -38,7 +38,7 @@
 +        return this.getControllingPassenger() instanceof net.minecraft.world.entity.player.Player ? this.getSpeed() * 0.1F : flyingSpeed;
 +        // DivineMC end - Fix MC-172801
      }
- 
+
      public float getSpeed() {
 @@ -3914,6 +_,7 @@
      protected void updateFallFlying() {
@@ -48,3 +48,25 @@
              if (!this.canGlide()) {
                  if (this.getSharedFlag(Entity.FLAG_FALL_FLYING) && !CraftEventFactory.callToggleGlideEvent(this, false).isCancelled()) // CraftBukkit
                  this.setSharedFlag(Entity.FLAG_FALL_FLYING, false);
+@@ -530,6 +_,7 @@
+             }
+         }
+
++        lagCompensation(); // DivineMC - Lag Compensation
+         this.tickEffects();
+         this.yHeadRotO = this.yHeadRot;
+         this.yBodyRotO = this.yBodyRot;
+@@ -538,6 +_,14 @@
+         profilerFiller.pop();
+     }
++
++    // DivineMC start - Lag Compensation
++    private void lagCompensation() {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.potionEffectAcceleration) return;
++        if (this.level().isClientSide()) return;
++        // Intentionally do not run extra effect ticks in the same server tick to avoid stacked damage/healing.
++    }
++    // DivineMC end - Lag Compensation
+
+     protected boolean shouldTakeDrowningDamage() {
+         return this.getAirSupply() <= -this.level().purpurConfig.drowningDamageInterval; // Purpur - Drowning Settings

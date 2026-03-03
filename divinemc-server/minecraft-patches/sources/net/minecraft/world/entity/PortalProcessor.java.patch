@@ -1,0 +1,22 @@
+--- a/net/minecraft/world/entity/PortalProcessor.java
++++ b/net/minecraft/world/entity/PortalProcessor.java
+@@ -24,10 +_,20 @@ public class PortalProcessor {
+             return false;
+         } else {
+             this.insidePortalThisTick = false;
+-            return canChangeDimensions && this.portalTime++ >= this.portal.getPortalTransitionTime(level, entity);
++            return canChangeDimensions && lagCompensation(++this.portalTime, level) >= this.portal.getPortalTransitionTime(level, entity); // DivineMC - Lag compensation
+         }
+     }
++
++    // DivineMC start - Lag compensation
++    private int lagCompensation(int original, ServerLevel world) {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.portalAcceleration) return original;
++        if (world.isClientSide()) return original;
++
++        return original + world.tpsCalculator.applicableMissedTicks();
++    }
++    // DivineMC end - Lag compensation
+ 
+     public @Nullable TeleportTransition getPortalDestination(ServerLevel level, Entity entity) {
+         return this.portal.getPortalDestination(level, entity, this.entryPosition);

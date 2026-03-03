@@ -1,0 +1,30 @@
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -808,6 +_,8 @@
+             }
+         }
+ 
++        this.tpsCalculator.doTick(); // DivineMC - Lag compensation
++
+         this.updateSkyBrightness();
+         if (runsNormally) {
+             this.tickTime();
+@@ -925,11 +_,18 @@
+                     this.setDayTime(this.preciseTime);
+                 } else
+                 // Purpur end - Configurable daylight cycle
+-                this.setDayTime(this.levelData.getDayTime() + 1L);
++                this.setDayTime(lagCompensation(this.levelData.getDayTime()) + 1L); // DivineMC - Lag compensation
+             }
+         }
+     }
++
++    // DivineMC start - Lag compensation
++    private long lagCompensation(long original) {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.timeAcceleration) return original;
++        return original + this.tpsCalculator.applicableMissedTicks();
++    }
++    // DivineMC end - Lag compensation
+ 
+     public void setDayTime(long time) {
+         this.serverLevelData.setDayTime(time);

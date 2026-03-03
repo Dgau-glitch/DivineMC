@@ -42,12 +42,12 @@ public class TPSCalculator {
         return tpsHistory.stream()
             .mapToDouble(Double::doubleValue)
             .average()
-            .orElse(0.1);
+            .orElse((double) MAX_TPS);
     }
 
     public double getTPS() {
-        if (lastTick == null) return -1;
-        if (getMSPT() <= 0) return 0.1;
+        if (lastTick == null) return MAX_TPS;
+        if (getMSPT() <= 0) return MAX_TPS;
 
         double tps = 1000 / (double) getMSPT();
         return tps > MAX_TPS ? MAX_TPS : tps;
@@ -62,7 +62,9 @@ public class TPSCalculator {
     }
 
     public double getMostAccurateTPS() {
-        return getTPS() > getAverageTPS() ? getAverageTPS() : getTPS();
+        double current = Math.max(1.0D, Math.min(MAX_TPS, getTPS()));
+        double average = Math.max(1.0D, Math.min(MAX_TPS, getAverageTPS()));
+        return Math.min(current, average);
     }
 
     public double getAllMissedTicks() {
@@ -70,7 +72,7 @@ public class TPSCalculator {
     }
 
     public int applicableMissedTicks() {
-        return (int) Math.floor(allMissedTicks);
+        return Math.min(1, (int) Math.floor(allMissedTicks));
     }
 
     public void clearMissedTicks() {

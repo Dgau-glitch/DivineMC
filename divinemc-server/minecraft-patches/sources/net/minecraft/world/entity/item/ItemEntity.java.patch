@@ -1,0 +1,28 @@
+--- a/net/minecraft/world/entity/item/ItemEntity.java
++++ b/net/minecraft/world/entity/item/ItemEntity.java
+@@ -146,8 +_,25 @@ public class ItemEntity extends Entity implements TraceableEntity {
+     }
+     // Paper end - EAR 2
+ 
++    // DivineMC start - Lag compensation
++    private void lagCompensation() {
++        if (!org.bxteam.divinemc.config.DivineConfig.MiscCategory.lagCompensationEnabled || !org.bxteam.divinemc.config.DivineConfig.MiscCategory.pickupAcceleration) return;
++        if ((this).level().isClientSide()) return;
++
++        if (pickupDelay == 0) return;
++
++        if (pickupDelay - ((ServerLevel) this.level()).tpsCalculator.applicableMissedTicks() <= 0) {
++            pickupDelay = 0;
++            return;
++        }
++
++        pickupDelay = pickupDelay - ((ServerLevel) this.level()).tpsCalculator.applicableMissedTicks();
++    }
++    // DivineMC end - Lag compensation
++
+     @Override
+     public void tick() {
++        lagCompensation(); // DivineMC - Lag compensation
+         if (this.getItem().isEmpty()) {
+             this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DESPAWN); // CraftBukkit - add Bukkit remove cause
+         } else {
