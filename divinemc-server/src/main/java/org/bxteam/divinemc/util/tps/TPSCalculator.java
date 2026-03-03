@@ -11,9 +11,9 @@ public class TPSCalculator {
     private static final int historyLimit = 40;
 
     public static final int MAX_TPS = 20;
-    public static final int MIN_APPLICABLE_TPS = 10;
+    public static final int MIN_APPLICABLE_TPS = 18;
     public static final int FULL_TICK = 50;
-    public static final int MAX_CATCHUP_TICKS_PER_TICK = 1;
+    public static final int MAX_CATCHUP_TICKS_PER_TICK = 0;
 
     public TPSCalculator() {}
 
