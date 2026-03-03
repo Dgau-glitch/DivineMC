@@ -24,8 +24,6 @@
      }
 
      @Override
---- a/net/minecraft/world/level/chunk/LevelChunk.java
-+++ b/net/minecraft/world/level/chunk/LevelChunk.java
 @@ -953,6 +_,17 @@ public class LevelChunk extends ChunkAccess implements DebugValueSource, ca.spot
              this.ticker = ticker;
          }
