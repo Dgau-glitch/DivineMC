@@ -12,7 +12,7 @@
      // Paper end - detailed watchdog information
  
      public void move(MoverType type, Vec3 movement) {
-+        if (!this.boundingBoxChanged && movement.equals(Vec3.ZERO)) return; // DivineMC - VMP: skip entity move if movement is zero
++        if (!this.boundingBoxChanged && movement.equals(Vec3.ZERO) && !(this instanceof net.minecraft.world.entity.item.PrimedTnt)) return; // DivineMC - VMP: skip entity move if movement is zero (except PrimedTnt for vanilla-like collision behavior)
          final Vec3 originalMovement = movement; // Paper - Expose pre-collision velocity
          // Paper start - detailed watchdog information
          ca.spottedleaf.moonrise.common.util.TickThread.ensureTickThread("Cannot move an entity off-main");
