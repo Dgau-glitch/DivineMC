@@ -24,6 +24,7 @@ import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -85,7 +86,9 @@ public final class RegionizedChunkTicking extends ServerChunkCache {
             }
 
             for (Entity entity : region.entities()) {
-                tickEntity(entity);
+                if (!(entity instanceof PrimedTnt)) {
+                    tickEntity(entity);
+                }
             }
 
             return regionChunksIDs;
@@ -118,8 +121,29 @@ public final class RegionizedChunkTicking extends ServerChunkCache {
             }
         }
 
+        // Keep PrimedTnt ticking serialized after all chunk tasks to preserve vanilla-like collision behavior
+        for (RegionData region : tickPair.regions()) {
+            if (region == null || region.isEmpty()) {
+                continue;
+            }
+
+            for (Entity entity : region.entities()) {
+                if (entity instanceof PrimedTnt) {
+                    tickEntity(entity);
+                }
+            }
+        }
+
         for (Entity entity : tickPair.entities()) {
-            tickEntity(entity);
+            if (entity instanceof PrimedTnt) {
+                tickEntity(entity);
+            }
+        }
+
+        for (Entity entity : tickPair.entities()) {
+            if (!(entity instanceof PrimedTnt)) {
+                tickEntity(entity);
+            }
         }
     }
 
