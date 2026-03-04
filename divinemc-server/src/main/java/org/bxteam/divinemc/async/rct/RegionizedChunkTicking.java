@@ -68,10 +68,9 @@ public final class RegionizedChunkTicking extends ServerChunkCache {
             ticked.add(tick(region, randomTickSpeed));
         }
 
-        CompletableFuture.runAsync(() -> {
-            finishTicking(ticked, randomTickSpeed, raw, tickPair);
-            spawns.join();
-        }, REGION_EXECUTOR).join();
+        // Keep chunk ticking async, but finalize entity ticking on the caller world thread for deterministic vanilla-like ordering
+        finishTicking(ticked, randomTickSpeed, raw, tickPair);
+        spawns.join();
     }
 
     private CompletableFuture<LongOpenHashSet> tick(RegionData region, int randomTickSpeed) {
