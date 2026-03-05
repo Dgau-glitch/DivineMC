@@ -11,7 +11,9 @@ public class TPSCalculator {
     private static final int historyLimit = 40;
 
     public static final int MAX_TPS = 20;
+    public static final int MIN_APPLICABLE_TPS = 18;
     public static final int FULL_TICK = 50;
+    public static final int MAX_CATCHUP_TICKS_PER_TICK = 0;
 
     public TPSCalculator() {}
 
@@ -42,15 +44,18 @@ public class TPSCalculator {
         return tpsHistory.stream()
             .mapToDouble(Double::doubleValue)
             .average()
-            .orElse(0.1);
+            .orElse(MAX_TPS);
     }
 
     public double getTPS() {
-        if (lastTick == null) return -1;
-        if (getMSPT() <= 0) return 0.1;
+        if (lastTick == null) return MAX_TPS;
+        if (getMSPT() <= 0) return MAX_TPS;
 
         double tps = 1000 / (double) getMSPT();
-        return tps > MAX_TPS ? MAX_TPS : tps;
+        if (tps > MAX_TPS) {
+            return MAX_TPS;
+        }
+        return Math.max(1.0D, tps);
     }
 
     public void missedTick() {
@@ -62,19 +67,23 @@ public class TPSCalculator {
     }
 
     public double getMostAccurateTPS() {
-        return getTPS() > getAverageTPS() ? getAverageTPS() : getTPS();
+        return Math.max(MIN_APPLICABLE_TPS, Math.min(getTPS(), getAverageTPS()));
     }
 
     public double getAllMissedTicks() {
         return allMissedTicks;
     }
 
-    public int applicableMissedTicks() {
+    private int pendingWholeMissedTicks() {
         return (int) Math.floor(allMissedTicks);
     }
 
+    public int applicableMissedTicks() {
+        return Math.min(MAX_CATCHUP_TICKS_PER_TICK, pendingWholeMissedTicks());
+    }
+
     public void clearMissedTicks() {
-        allMissedTicks -= applicableMissedTicks();
+        allMissedTicks -= pendingWholeMissedTicks();
     }
 
     public void resetMissedTicks() {
